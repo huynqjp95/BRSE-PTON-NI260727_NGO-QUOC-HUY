@@ -112,9 +112,11 @@ update enrollments set credits = credits + 1
 where status = 'Completed' and course_id in (
 	select course_id from courses where creation_date < '2000-01-01');
 set sql_safe_updates = 1;
-	
+
     -- Xoa ban ghi trong academic_log  co log_time < 20-05-2024
+set sql_safe_updates = 0;
 delete from academic_logs where log_time < '2024-05-20';
+set sql_safe_updates = 1;
 
 -- PHẦN 3 : TRUY VẤN CƠ BẢN
 	-- CÂU 1 : Liệt kê các thông tin full_name, major và gpa của những sv có GPA > 3.8 and major = 'Kỹ thuật PM'
@@ -172,11 +174,71 @@ after update
 on enrollments for each row
 begin
 	if old.status <> new.status and new.status = 'Completed' then
-    insert into academic_log (enrollment_id, student_id, log_time, note)
-    values (new.enrollment_id, new.student_id, current_datetimes, 'Course completed');
+    insert into academic_logs (enrollment_id, student_id, log_time, note)
+    values (new.enrollment_id, new.student_id, current_timestamp, 'Course completed');
 	end if;
 end //
 delimiter ;
+
+	-- CÂU 2 : khi insert vào enrollments với status = 'Completed' then GPA của student tăng 0,1 (khong quá 4.0)
+delimiter //
+create trigger after_insert_enrollments
+after insert
+on enrollments for each row
+begin
+	declare v_gpa decimal(3,1);
+    select gpa into v_gpa from students where student_id = new.student_id;
+	if new.status = 'Completed' and v_gpa < 4.0 then
+		update students set gpa = gpa + 0.1 where student_id = new.student_id ;
+	end if;
+end //
+delimiter ;
+
+-- PHẦN 7 : STORED PROCEDURE
+	-- CÂU 1 : tạo procedure nhận student_id và trả về thông báo kết quả 
+delimiter //
+create procedure display_credits_progress 
+	(p_student_id int, out p_message varchar(255))
+begin
+	declare v_total_credits int;
+    select sum(credits) into v_total_credits from enrollments
+    where student_id = p_student_id;
+    
+    if v_total_credits > 100 then
+		set p_message = 'Excellent progress';
+	elseif v_total_credits = 100 then
+		set p_message = 'Target met';
+	else 
+		set p_message = 'Normal progress';
+    end if;
+end //
+delimiter ;
+
+call display_credits_progress (1, @message);
+select @message;
+
+	-- CÂU 2 : Thực hiện nhượng quyền tham gia lớp học cho một mã đăng ký
+delimiter //
+create procedure change_students (p_enrollment_id int, p_student_id int)
+begin
+	declare exit handler for sqlexception
+	begin
+		rollback;
+        select 'Transaction falied, rolled back' as message;
+	end;
+    
+    start transaction;
+    update enrollments set student_id = p_student_id
+    where enrollment_id = p_enrollment_id;
+    
+    insert into academic_logs (enrollment_id, student_id, log_time, note)
+    values (p_enrollment_id, p_student_id, current_timestamp, 'Student reassigned');
+    
+    commit;
+    select 'Change student of enrollment is succcessful' as message;
+end //
+delimiter ;
+
 
 
 
