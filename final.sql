@@ -1,244 +1,363 @@
--- PHAN 1: THIET KE CSDL
-DROP DATABASE IF EXISTS module2;
+-- PHẦN1.DDL‒THIẾT KẾ CƠ SỞ DỮ LIỆU (15ĐIỂM)
+drop database if exists module2final;
+create database module2final;
+use module2final;
 
-CREATE DATABASE module2;
-
-USE module2;
-
--- 1. Bang courses
-CREATE TABLE courses (
-    course_id INT AUTO_INCREMENT PRIMARY KEY,
-    course_name VARCHAR(100) NOT NULL,
-    course_code VARCHAR(20) NOT NULL UNIQUE,
-    department VARCHAR(100) NOT NULL,
-    creation_date DATE
+-- create table
+	-- 1 football_teams table
+create table football_teams (
+	team_id int auto_increment primary key,
+    team_name varchar(100) not null,
+    team_code varchar(20) not null unique,
+    home_area varchar(100) not null,
+    founded_date date not null
+);
+	
+    -- 2 players table
+create table players (
+	player_id int auto_increment primary key,
+    full_name varchar(100) not null,
+    preferred_position varchar(30) 
+    check ( preferred_position in('Thủ môn','Hậu vệ', 'Tiền vệ','Tiền đạo')),
+    phone_number varchar(15) not null unique,
+    skill_rating decimal(3,1) default 5.0
+    check (skill_rating >= 0 and skill_rating <= 10.0)
 );
 
--- 2. Bang students
-CREATE TABLE students (
-    student_id INT AUTO_INCREMENT PRIMARY KEY,
-    full_name VARCHAR(100) NOT NULL,
-    major VARCHAR(100) NOT NULL,
-    phone_number VARCHAR(15) NOT NULL UNIQUE,
-    gpa DECIMAL(3, 1) DEFAULT 4.0,
-    CHECK (gpa >= 0 AND gpa <= 4.0)
+	-- 3 matches table
+create table matches (
+	match_id int auto_increment primary key,
+    team_id int,
+    foreign key (team_id) references football_teams(team_id),
+    opponent_name varchar(100) not null,
+    venue varchar(150) not null,
+    match_time datetime not null,
+    pitch_fee decimal(10,2) check( pitch_fee >= 0 ),
+    status varchar(30) 
+    check ( status in ( 'Scheduled', 'Completed', 'Cancelled'))
+) auto_increment = 7001;
+
+	-- 4 match_registrations
+create table match_registrations (
+	registration_id int auto_increment primary key,
+    match_id int,
+    foreign key (match_id) references matches(match_id),
+    player_id int,
+    foreign key (player_id) references players(player_id),
+    attendance_status varchar(30)
+    check (attendance_status in ('Registered','Played', 'Absent')),
+    goals int default 0 check ( goals >= 0),
+    registered_at datetime default current_timestamp
+)auto_increment = 8001;
+
+	-- 5 team_logs table
+create table team_logs (
+	log_id int auto_increment primary key,
+    registration_id int,
+    foreign key (registration_id) references match_registrations(registration_id),
+    player_id int ,
+    foreign key (player_id) references players(player_id),
+    log_time datetime not null,
+    note text not null
 );
 
--- 3. Bang enrollments (dang ky hoc)
-CREATE TABLE enrollments (
-    enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
-    course_id INT,
-    student_id INT,
-    enroll_time DATETIME,
-    credits INT,
-    status ENUM('Pending', 'Completed', 'Dropped'),
-    CHECK (credits > 0),
-    FOREIGN KEY (course_id) REFERENCES courses (course_id),
-    FOREIGN KEY (student_id) REFERENCES students (student_id)
-) AUTO_INCREMENT = 7001;
+-- PHẦN2. DML‒ INSERT , UPDATE , DELETE
+-- Câu1 ‒ INSERT
+insert into football_teams (team_name, team_code, home_area, founded_date)
+values 
+	('Sài Gòn Strikers','SGS', 'Quận 1', '2018-3-10'),
+	('Thunder FC','TFC', 'TP Thủ Đức', '2021-6-15'),
+    ('Brothes United','BRU', 'Bình Thạnh', '2016-9-20'),
+    ('Weekend Warriors','WKW', 'Quận 7', '2022-1-8'),
+    ('Office Eleven','O11', 'Gò Vấp', '2019-11-30');
 
--- 4. Bang enrollment_details (chi tiet dang ky)
-CREATE TABLE enrollment_details (
-    detail_id INT AUTO_INCREMENT PRIMARY KEY,
-    enrollment_id INT,
-    attendance_check VARCHAR(150) NOT NULL,
-    detail_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (enrollment_id) REFERENCES enrollments (enrollment_id)
-) AUTO_INCREMENT = 8001;
-
--- 5. Bang academic_logs (nhat ky hoc vu)
-CREATE TABLE academic_logs (
-    log_id INT AUTO_INCREMENT PRIMARY KEY,
-    enrollment_id INT,
-    student_id INT,
-    log_time DATETIME NOT NULL,
-    note TEXT,
-    foreign key (enrollment_id) references enrollments (enrollment_id),
-    foreign key (student_id) 	references students (student_id)
-);
-
--- PHAN 2: DML (INSERT, UPDATE, DELETE)
--- Cau 1: INSERT
-
--- Bang courses
-INSERT INTO courses (course_name, course_code, department, creation_date)
-VALUES
-    ('Lập trình Java', 'JAVA01', 'CNTT', '2023-12-03'),
-    ('Cấu trúc dữ liệu', 'DSA02', 'Khoa học máy tính', '1996-11-25'),
-    ('Cơ sở dữ liệu', 'SQL03', 'CNTT', '2001-07-08'),
-    ('Mạng máy tính', 'NET04', 'Truyền thông', '1998-01-19'),
-    ('Trí tuệ nhân tạo', 'AI05', 'Khoa học máy tính', '2000-09-30');
-
--- Bang students
-INSERT INTO students (full_name, major, phone_number, gpa)
-VALUES
-    ('Nguyễn Văn Hải', 'Hệ thống TT', '0931112223', 3.8),
-    ('Trần Thu Hà', 'Kỹ thuật PM', '0932223334', 4.0),
-    ('Lê Quốc Tuấn','An toàn TT', '0933334445', 3.6),
-    ('Phạm Minh CHâu', 'Dữ liệu lớn', '0934445556', 3.9),
-    ('Hoàng Gia Bảo', 'Kỹ thuật PM', '0935556667', 3.7);
-
--- Bang enrollments
-insert into enrollments (course_id, student_id, enroll_time, credits, status)
+insert into players (full_name, preferred_position, phone_number, skill_rating)
 values
-	(1, 1, '2024-05-20 08:00', 3, 'Pending'),
-    (2, 2, '2024-05-20 09:30', 4, 'Completed'),
-    (3, 3, '2024-05-20 10:15', 3, 'Pending'),
-    (4, 5, '2024-05-21 07:00', 3, 'Completed'),
-    (5, 4, '2024-05-21 08:45', 4, 'Dropped');
+	('Nguyễn Minh Khang', 'Tiền đạo', '901112233', 8.2),
+    ('Trần Hoàng Nam', 'Tiền vệ', '902223344', 7.5),
+    ('Lê Quốc Huy', 'Hậu vệ', '903334455', 7.8),
+    ('Phạm Gia Bảo', 'Thủ môn', '904445566', 8.2),
+    ('Võ Thành Công', 'Tiền vệ', '905556677', 7);
 
--- Bang enrollment_details
-insert into enrollment_details (enrollment_id, attendance_check, detail_date)
+insert into matches (team_id, opponent_name, venue, match_time, pitch_fee, status)
 values
-	(7002, 'Đủ điều kiện thi', '2024-05-20 10:00'),
-    (7004, 'Vắng 1 buổi', '2024-05-21 08:00'),
-    (7001, 'Đang học', '2024-05-20 09:00'),
-    (7003, 'Nghỉ phép', '2024-05-20 11:00'),
-    (7005, 'Không đi học', '2024-05-21 09:00');
+	(1, 'Black Cats', 'Sân Tao Đàn', '2026-5-20 18:00', 1200000, 'Scheduled'),
+    (3, 'Blue Sharks', 'Sân Gia Định', '2026-5-21 19:30', 1500000, 'Completed'),
+    (2, 'Bình Minh FC', 'Sân Linh Trung', '2026-5-22 18:30', 1000000, 'Completed'),
+    (5, 'Red Bulls', 'Sân Kỳ Hòa', '2026-5-23 20:00', 1300000, 'Cancelled'),
+    (4, 'Young Boys', 'Sân Hoàng Văn Thụ', '2026-5-24 17:30', 1100000, 'Scheduled');
 
--- Bang academic_logs
-insert into academic_logs (enrollment_id, student_id, log_time, note)
+insert into match_registrations(match_id, player_id, attendance_status, goals, registered_at)
 values
-	(7001, 1, '2024-05-20 09:05', 'Bắt đầu lớp học'),
-    (7002, 2, '2024-05-20 10:50', 'Hoàn tất môn học' ),
-    (7003, 3, '2024-05-20 11:10', 'Đang sắp xếp lịch bù'),
-    (7004, 5, '2024-05-21 08:10', 'Chờ phê duyệt'),
-    (7005, 4, '2024-05-21 09:05', 'Hủy do vắng quá số buổi');
+	(7002, 1, 'Played', 2, '2026-5-19 09:00'),
+    (7002, 3, 'Played', 0, '2026-5-19 09:15'),
+    (7001, 2, 'Registered', 0, '2026-5-18 20:00'),
+    (7003, 5, 'Played', 1, '2026-5-20 08:30'),
+    (7004, 4, 'Absent', 0, '2026-5-21 10:00');
 
--- Cau 2 UPDATE DELETE
-	-- Tang them 1 credits cho cac ban ghi da completed creation_date < 2000
+insert into team_logs (registration_id, player_id, log_time, note)
+values
+	(8003, 2, '2026-5-18 20:05', 'Xác nhận tham gia'),
+    (8001, 1, '2026-5-19 09:05', 'Đăng ký đá chính'),
+    (8002, 3, '2026-5-19 09:20', 'Xác nhận tham gia'),
+    (8004, 5, '2026-5-20 08:35', 'Đã có mặt tại sân'),
+    (8005, 4, '2026-5-23 20:05', 'Vắng mặt không báo trước');
+
+-- Câu 2 Update
+	-- 1 Tăng pitch_fee  thêm 100.000 đồngcho các trận đồng thời thỏa mãn:Trạng thái là Completed
 set sql_safe_updates = 0;
-update enrollments set credits = credits + 1 
-where status = 'Completed' and course_id in (
-	select course_id from courses where creation_date < '2000-01-01');
+update matches set pitch_fee = pitch_fee + 100000
+where status = 'Completed';
+
+
+	-- 2 Xóa các bản ghi trong team_logs có log_time trước ngày 20/05/2026
+delete from team_logs where log_time < '2026-05-20';
+    
 set sql_safe_updates = 1;
 
-    -- Xoa ban ghi trong academic_log  co log_time < 20-05-2024
-set sql_safe_updates = 0;
-delete from academic_logs where log_time < '2024-05-20';
-set sql_safe_updates = 1;
+-- Phần 3 Truy Vấn cơ bản
+	-- câu 1 liệt kê full_name, preferred_position, skill_rating của cầu thủ có 
+    -- skill_rating > 7.8 hoặc có preferred_position  là 'Tiền vệ'
+select full_name, preferred_position, skill_rating 
+from players
+where skill_rating > 7.8 or preferred_position = 'Tiền vệ';
+	
+    /*
+	Câu 2  Liệt kê opponent_name, venue và match_time của các trận:
+- Diễn ra từ ngày 2026-05-20 đến hết ngày 2026-05-22.
+- Tên đội đối thủ bắt đầu bằng chữ B.
+    */
+select  opponent_name ,venue ,match_time
+from matches
+where match_time >= '2026-05-20'
+and match_time <= '2026-05-22'
+and opponent_name like 'B%';
 
--- PHẦN 3 : TRUY VẤN CƠ BẢN
-	-- CÂU 1 : Liệt kê các thông tin full_name, major và gpa của những sv có GPA > 3.8 and major = 'Kỹ thuật PM'
-select full_name, major, gpa from students
-where major = 'Kỹ thuật PM' and gpa > 3.8;
-
-	-- CÂU 2 : course_name và course_code có ngày tạo từ 1998-01-01 đến 2001-12-31 mã học phần bắt đầu bằng "A"
-select course_name, course_code from courses
-where creation_date >= '1998-01-01' 
-	and creation_date <= '2001-12-31' 
-	and course_code like 'A%';
-
-	-- CÂU 3 :
-select enrollment_id, enroll_time, credits from enrollments
-order by credits desc
+	/*
+    Câu 3 – 5 điểm: Liệt kê registration_id, goals và registered_at:
+- Sắp xếp goals giảm dần.
+- Nếu số bàn thắng bằng nhau, sắp xếp registration_id tăng dần.
+- Mỗi trang có 2 bản ghi.
+- Chỉ hiển thị trang thứ hai.
+    */
+select registration_id, goals, registered_at
+from match_registrations
+order by goals desc , registration_id asc
 limit 2 offset 2;
 
--- Phần 4 : Truy vấn nâng cao
-	-- Câu 1 : liệt kê course_name, full_name , major, credits, creation_time
-select c.course_name, s.full_name, s.major, e.credits, e.enroll_time
-from enrollments e
-join students s on s.student_id = e.student_id 
-join courses c  on c.course_id  = e.course_id;
+-- PHẦN 4. TRUY VẤN NÂNG CAO
+/*
+Câu 1 – 5 điểm: Kết hợp các bảng liên quan để liệt kê:
+- Tên đội bóng.
+- Tên đội đối thủ. ?? khong biet
+- Họ tên cầu thủ.
+- Vị trí sở trường.
+- Số bàn thắng.
+- Thời gian thi đấu.
+*/
+select m.opponent_name, 
+	p.full_name, 
+	p.preferred_position,
+    mr.goals,
+    mr.registered_at
+from match_registrations mr
+join matches m on m.match_id = mr.match_id
+join players p on p.player_id = mr.player_id;
 
-	-- Câu 2 : Liệt kê full_name, Sum(credits) chỉ những môn completed và credits > 120
-select s.full_name, sum(credits) as total_credits
-from enrollments e 
-join students s on s.student_id = e.student_id
-where e.status = 'Completed'
-group by s.student_id, s.full_name
-having total_credits > 120;
+/*
+Câu 2 – 5 điểm: Liệt kê họ tên cầu thủ và tổng số bàn thắng trong các đăng ký 
+có attendance_status = 'Played'. Chỉ hiển thị những cầu thủ có tổng số bàn thắng lớn hơn 1.
+*/
+select p.full_name , sum(mr.goals) as total_goals 
+from match_registrations mr
+join players p on p.player_id = mr.player_id
+group by mr.player_id, p.full_name
+having total_goals > 1;
 
-	-- Câu 3 : Liệt kê student_id, full_name và gpa của những sv có trung bình GPA cao nhât ??
-select student_id, full_name, gpa from students
-where gpa = (select max(gpa) from students);
+/*
+Câu 3 – 5 điểm: Liệt kê player_id, full_name và skill_rating của cầu thủ có điểm kỹ 
+năng cao nhất. Nếu nhiều cầu thủ đồng hạng cao nhất, phải hiển thị tất cả.
+*/
+select player_id, full_name, skill_rating
+from players
+where skill_rating in (
+	select max(skill_rating) from players);
 
--- PHẦN 5 : INDEX & VIEW
-	-- CÂU 1 Tạo index cho status và credits của enrollments
-create index idx_status_credits on enrollments (status,credits);
+-- PHẦN 5. INDEX & VIEW (10 ĐIỂM)
+/*
+Câu 1 – 5 điểm: Tạo chỉ mục kết hợp trên bảng match_registrations, gồm:
+- attendance_status
+- goals
+*/
+create index idx_attendancestatus_goals 
+on match_registrations(attendance_status,goals);
 
-	-- CÂU 2 : tạo view hiển thị full_name, count(course_id), sum(credits) ngoại trừ status Dropped
-create view v_infor_students
-as
-select s.full_name as 'Họ tên', count(e.course_id) as 'Tổng số môn', sum(e.credits) as 'Tổng số tín chỉ'
-from enrollments e 
-join students s on s.student_id = e.student_id
-where e.status <> 'Dropped'
-group by e.student_id, s.full_name;
+/*
+Câu 2 – 5 điểm: Tạo một view hiển thị:
+- player_id
+- full_name
+- Tổng số trận đã đăng ký
+- Tổng số bàn thắng
+Yêu cầu:
+- Không tính các đăng ký có attendance_status = 'Absent'.
+- Cầu thủ chưa có đăng ký hợp lệ vẫn phải xuất hiện.       ---> ?? khong hieu
+- Các giá trị tổng của cầu thủ chưa có đăng ký bằng 0.   ---->    ?? khong hieu
+*/
+create view infor_players as
+select 
+	p.player_id,
+	p.full_name, 
+	count(mr.player_id) as total_matchs,
+    sum(mr.goals) as total_goals
+from match_registrations mr
+join players p on p.player_id = mr.player_id
+where attendance_status <> 'Absent'
+group by p.player_id, p.full_name;
 
--- PHẦN 6 TRIGGER
-	-- CẤU 1 : Khi status của enrollments -> completed, thì insert academic_logs
+-- kiểm thử view infor_players
+select * from infor_players;
+
+-- PHẦN 6. TRIGGER
+/*
+Câu 1 – 5 điểm
+Viết trigger chạy sau khi cập nhật bảng match_registrations.
+Khi attendance_status thực sự chuyển từ một giá trị khác sang Played,
+ hệ thống tự động thêm một bản ghi vào team_logs với:
+- registration_id: mã đăng ký vừa cập nhật.
+- player_id: cầu thủ của đăng ký.
+- note: Player confirmed as played.
+- log_time: thời gian hiện tại của hệ thống.
+Không ghi nhật ký nếu bản ghi đã có trạng thái Played và chỉ cập nhật một cột khác.
+*/
 delimiter //
-create trigger after_update_status_enrollments 
+create trigger after_update_match_registrations
 after update
-on enrollments for each row
+on match_registrations for each row
 begin
-	if old.status <> new.status and new.status = 'Completed' then
-    insert into academic_logs (enrollment_id, student_id, log_time, note)
-    values (new.enrollment_id, new.student_id, current_timestamp, 'Course completed');
-	end if;
-end //
-delimiter ;
-
-	-- CÂU 2 : khi insert vào enrollments với status = 'Completed' then GPA của student tăng 0,1 (khong quá 4.0)
-delimiter //
-create trigger after_insert_enrollments
-after insert
-on enrollments for each row
-begin
-	declare v_gpa decimal(3,1);
-    select gpa into v_gpa from students where student_id = new.student_id;
-	if new.status = 'Completed' and v_gpa < 4.0 then
-		update students set gpa = gpa + 0.1 where student_id = new.student_id ;
-	end if;
-end //
-delimiter ;
-
--- PHẦN 7 : STORED PROCEDURE
-	-- CÂU 1 : tạo procedure nhận student_id và trả về thông báo kết quả 
-delimiter //
-create procedure display_credits_progress 
-	(p_student_id int, out p_message varchar(255))
-begin
-	declare v_total_credits int;
-    select sum(credits) into v_total_credits from enrollments
-    where student_id = p_student_id;
+	if new.attendance_status <> old.attendance_status 
+    and new.attendance_status = 'Played' then
     
-    if v_total_credits > 100 then
-		set p_message = 'Excellent progress';
-	elseif v_total_credits = 100 then
-		set p_message = 'Target met';
-	else 
-		set p_message = 'Normal progress';
+    insert into team_logs (registration_id, player_id, log_time, note)
+    values (new.registration_id, new.player_id, current_timestamp, 'Player confirmed as played');
+    
     end if;
 end //
 delimiter ;
 
-call display_credits_progress (1, @message);
-select @message;
+-- kiem thu trigger
+update match_registrations set attendance_status = 'Played'
+where registration_id = 8003;
+select * from team_logs; -- ok
 
-	-- CÂU 2 : Thực hiện nhượng quyền tham gia lớp học cho một mã đăng ký
+/*
+Câu 2 – 5 điểm
+Viết trigger chạy sau khi thêm mới vào match_registrations.
+Nếu bản ghi mới có attendance_status = 'Played':
+- Tăng skill_rating của cầu thủ tương ứng thêm 0.1.
+- Đảm bảo skill_rating không vượt quá 10.0.
+*/
 delimiter //
-create procedure change_students (p_enrollment_id int, p_student_id int)
+create trigger after_insert_match_registrations
+after insert
+on match_registrations for each row
 begin
-	declare exit handler for sqlexception
-	begin
-		rollback;
-        select 'Transaction falied, rolled back' as message;
-	end;
+	if new.attendance_status = 'Played' then
     
-    start transaction;
-    update enrollments set student_id = p_student_id
-    where enrollment_id = p_enrollment_id;
+    update players set skill_rating = least(skill_rating + 0.1, 10.0)
+    where player_id = new.player_id;
     
-    insert into academic_logs (enrollment_id, student_id, log_time, note)
-    values (p_enrollment_id, p_student_id, current_timestamp, 'Student reassigned');
+    end if;
+end //
+delimiter ;
+
+-- kiem thu trigger
+insert into match_registrations(match_id, player_id, attendance_status, goals)
+values (7002, 1, 'Played', 2); 
+select * from players; -- --> ok da tang len 0.1
+
+-- PHẦN 7. STORED PROCEDURE
+/*
+Câu 1 – 5 điểm
+Viết stored procedure nhận vào mã cầu thủ và trả về thông báo
+ dựa trên tổng số bàn thắng trong các đăng ký có attendance_status = 'Played':
+- Tổng bàn thắng lớn hơn 3: Top scorer.
+- Tổng bàn thắng bằng 3: Target met.
+- Tổng bàn thắng nhỏ hơn 3: Keep training.
+- Nếu cầu thủ chưa thi đấu hoặc chưa ghi bàn, tổng số bàn thắng được xem là 0.
+*/
+delimiter //
+create procedure check_top_goals (p_player_id int, out p_result varchar(255))
+begin
+    declare v_goals int;
     
-    commit;
-    select 'Change student of enrollment is succcessful' as message;
+    select sum(goals) into v_goals 
+    from match_registrations 
+    where attendance_status = 'Played' 
+    and player_id = p_player_id;
+    
+    if v_goals > 3 then
+		set p_result = 'Top scorer';
+	elseif v_goals = 3 then
+		set p_result = 'Target met';
+	else
+		set p_result = 'Keep training';
+    end if;
 end //
 delimiter ;
 
 
+ select sum(mr.goals)
+    from players p
+    left join match_registrations mr on mr.player_id = p.player_id
+    where attendance_status = 'Played' 
+    and player_id = p_player_id;
 
 
+-- kiem thu procedure
+call check_top_goals (1, @message);
+select @message;
+
+/*
+Câu 2 – 5 điểm
+Viết stored procedure chuyển một lượt đăng ký thi đấu sang cầu thủ khác. Procedure nhận vào:
+- Mã đăng ký thi đấu.
+- Mã cầu thủ mới.
+Quy trình:
+1. Bắt đầu transaction.
+2. Cập nhật player_id mới trong match_registrations.
+3. Thêm một bản ghi vào team_logs với:
+  - registration_id đang xử lý.
+  - player_id mới.
+  - note = 'Player reassigned'.
+  - log_time là thời gian hiện tại.
+4. Nếu thành công thì COMMIT.
+5. Nếu có lỗi ở bất kỳ bước nào thì ROLLBACK bằng EXIT HANDLER.
+*/
+delimiter //
+create procedure change_register (p_registration_id int, p_player_id int)
+begin
+	declare exit handler for sqlexception
+    begin
+		rollback;
+        select 'Transaction failed, rolled back' as message;
+	end;
+    
+    start transaction;
+    update match_registrations set player_id = p_player_id
+    where registration_id = p_registration_id;
+    
+    insert into team_logs (registration_id, player_id, log_time, note)
+    values (p_registration_id, p_player_id, current_timestamp, 'Player reassigned');
+    
+    commit;
+    select 'Change successful' as message;
+    
+end //
+delimiter ;
+
+-- kiểm thử procedure
+
+call change_register (8002,1); -- Ok đã đổi thành công và team_logs củng đã insert
+select * from match_registrations;
+select * from team_logs;
+call change_register (8002,7); -- kiểm thử thất bại thành công trả về thông báo lỗi
