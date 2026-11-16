@@ -305,14 +305,6 @@ begin
 end //
 delimiter ;
 
-
- select sum(mr.goals)
-    from players p
-    left join match_registrations mr on mr.player_id = p.player_id
-    where attendance_status = 'Played' 
-    and player_id = p_player_id;
-
-
 -- kiem thu procedure
 call check_top_goals (1, @message);
 select @message;
